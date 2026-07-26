@@ -14,7 +14,7 @@ export default function Home() {
         when polls open. Registration takes less than a minute.
       </p>
       
-        href="/register"
+       <a href="/register"
         className="inline-flex items-center rounded-lg bg-[var(--accent-ink)] text-white font-medium px-8 py-3.5 hover:opacity-90 transition"
       >
         Register to vote
