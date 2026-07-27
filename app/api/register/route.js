@@ -3,6 +3,14 @@ import bcrypt from "bcryptjs";
 import { getSupabaseAdmin } from "../../../lib/supabaseAdmin";
 
 const MIN_PASSWORD_LENGTH = 8;
+const MAX_REGISTRATIONS_PER_IP_PER_WINDOW = 5;
+const RATE_LIMIT_WINDOW_MINUTES = 15;
+
+function getClientIp(request) {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0].trim();
+  return request.headers.get("x-real-ip") || "unknown";
+}
 
 export async function POST(request) {
   let body;
@@ -13,22 +21,14 @@ export async function POST(request) {
   }
 
   const rawMatric = typeof body.matricNumber === "string" ? body.matricNumber : "";
-  const rawCode = typeof body.registrationCode === "string" ? body.registrationCode : "";
   const password = typeof body.password === "string" ? body.password : "";
   const confirmPassword =
     typeof body.confirmPassword === "string" ? body.confirmPassword : "";
 
   const matricNumber = rawMatric.trim().toUpperCase();
-  const registrationCode = rawCode.trim().toUpperCase();
 
   if (!matricNumber) {
     return NextResponse.json({ error: "Enter your matric number." }, { status: 400 });
-  }
-  if (!registrationCode) {
-    return NextResponse.json(
-      { error: "Enter the registration code your course rep sent you." },
-      { status: 400 }
-    );
   }
   if (password.length < MIN_PASSWORD_LENGTH) {
     return NextResponse.json(
@@ -51,9 +51,31 @@ export async function POST(request) {
     );
   }
 
+  const ip = getClientIp(request);
+
+  const windowStart = new Date(
+    Date.now() - RATE_LIMIT_WINDOW_MINUTES * 60 * 1000
+  ).toISOString();
+
+  const { count: recentCount, error: rateError } = await supabase
+    .from("eligible_voters")
+    .select("matric_number", { count: "exact", head: true })
+    .eq("registered_ip", ip)
+    .gte("registered_at", windowStart);
+
+  if (!rateError && recentCount !== null && recentCount >= MAX_REGISTRATIONS_PER_IP_PER_WINDOW) {
+    return NextResponse.json(
+      {
+        error:
+          "Too many registrations from this network in a short time. Wait a few minutes and try again, or contact the SRC if this is a shared campus network.",
+      },
+      { status: 429 }
+    );
+  }
+
   const { data: voter, error: lookupError } = await supabase
     .from("eligible_voters")
-    .select("matric_number, registered, department, level, registration_code")
+    .select("matric_number, registered, department, level")
     .eq("matric_number", matricNumber)
     .maybeSingle();
 
@@ -76,20 +98,9 @@ export async function POST(request) {
     return NextResponse.json(
       {
         error:
-          "This matric number is already registered. If this wasn't you, contact the SRC immediately.",
+          "This matric number is already registered. If this wasn't you, report it to the SRC immediately so it can be investigated before voting opens.",
       },
       { status: 409 }
-    );
-  }
-
-  const expectedCode = (voter.registration_code || "").trim().toUpperCase();
-  if (!expectedCode || registrationCode !== expectedCode) {
-    return NextResponse.json(
-      {
-        error:
-          "That code doesn't match our records for this matric number. Check with your course rep.",
-      },
-      { status: 401 }
     );
   }
 
@@ -101,6 +112,7 @@ export async function POST(request) {
       password_hash: passwordHash,
       registered: true,
       registered_at: new Date().toISOString(),
+      registered_ip: ip,
     })
     .eq("matric_number", matricNumber);
 
