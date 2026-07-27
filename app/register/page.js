@@ -4,7 +4,6 @@ import { useState } from "react";
 
 export default function RegisterPage() {
   const [matricNumber, setMatricNumber] = useState("");
-  const [registrationCode, setRegistrationCode] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [status, setStatus] = useState("idle");
@@ -20,12 +19,7 @@ export default function RegisterPage() {
       const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          matricNumber,
-          registrationCode,
-          password,
-          confirmPassword,
-        }),
+        body: JSON.stringify({ matricNumber, password, confirmPassword }),
       });
       const data = await res.json();
 
@@ -57,9 +51,8 @@ export default function RegisterPage() {
           Register to vote
         </h1>
         <p className="text-[var(--ink-muted)] mb-8 leading-relaxed">
-          Enter your matric number and the registration code your course
-          rep sent you privately, then set a password you&rsquo;ll use on
-          election day.
+          Enter your matric number exactly as it appears on your ID card,
+          then set a password you&rsquo;ll use on election day.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -76,23 +69,6 @@ export default function RegisterPage() {
               value={matricNumber}
               onChange={(e) => setMatricNumber(e.target.value)}
               placeholder="e.g. 20/30GM045"
-              className="w-full font-mono rounded-lg border border-[var(--line)] bg-white px-4 py-3 text-[var(--ink)] placeholder:text-[var(--ink-faint)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="registrationCode" className="block text-sm font-medium text-[var(--ink)] mb-1.5">
-              Registration code
-            </label>
-            <input
-              id="registrationCode"
-              name="registrationCode"
-              type="text"
-              autoComplete="off"
-              required
-              value={registrationCode}
-              onChange={(e) => setRegistrationCode(e.target.value)}
-              placeholder="Sent to you privately by your course rep"
               className="w-full font-mono rounded-lg border border-[var(--line)] bg-white px-4 py-3 text-[var(--ink)] placeholder:text-[var(--ink-faint)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
             />
           </div>
