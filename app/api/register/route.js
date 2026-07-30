@@ -3,13 +3,34 @@ import bcrypt from "bcryptjs";
 import { getSupabaseAdmin } from "../../../lib/supabaseAdmin";
 
 const MIN_PASSWORD_LENGTH = 8;
-const MAX_REGISTRATIONS_PER_IP_PER_WINDOW = 5;
+const MAX_REGISTRATIONS_PER_IP_PER_WINDOW = 2;
 const RATE_LIMIT_WINDOW_MINUTES = 15;
 
 function getClientIp(request) {
   const forwarded = request.headers.get("x-forwarded-for");
   if (forwarded) return forwarded.split(",")[0].trim();
   return request.headers.get("x-real-ip") || "unknown";
+}
+
+// Checks whether an IP is a known VPN/proxy/hosting address. Fails
+// OPEN on error or timeout — if the lookup itself is unreachable, we
+// don't want that to block every real student's registration.
+async function isProxyIp(ip) {
+  if (!ip || ip === "unknown") return false;
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2000);
+    const res = await fetch(
+      `http://ip-api.com/json/${ip}?fields=status,proxy,hosting`,
+      { signal: controller.signal }
+    );
+    clearTimeout(timeout);
+    if (!res.ok) return false;
+    const data = await res.json();
+    return Boolean(data.proxy || data.hosting);
+  } catch {
+    return false;
+  }
 }
 
 export async function POST(request) {
@@ -52,6 +73,16 @@ export async function POST(request) {
   }
 
   const ip = getClientIp(request);
+
+  if (await isProxyIp(ip)) {
+    return NextResponse.json(
+      {
+        error:
+          "Registration isn't allowed from a VPN or proxy connection. Please turn it off and try again from your normal network.",
+      },
+      { status: 403 }
+    );
+  }
 
   const windowStart = new Date(
     Date.now() - RATE_LIMIT_WINDOW_MINUTES * 60 * 1000
