@@ -12,7 +12,7 @@ export async function POST(request) {
       { status: 403 }
     );
   }
-export async function POST(request) {
+
   let body;
   try {
     body = await request.json();
@@ -73,4 +73,4 @@ export async function POST(request) {
     path: "/",
   });
   return response;
-}
+}}
