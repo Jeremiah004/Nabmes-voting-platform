@@ -2,7 +2,16 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { getSupabaseAdmin } from "../../../lib/supabaseAdmin";
 import { createSessionToken } from "../../../lib/session";
+import { getAppSettings } from "../../../lib/settings";
 
+export async function POST(request) {
+  const { votingOpen } = await getAppSettings();
+  if (!votingOpen) {
+    return NextResponse.json(
+      { error: "Voting hasn't opened yet. Check back once polls are live." },
+      { status: 403 }
+    );
+  }
 export async function POST(request) {
   let body;
   try {
