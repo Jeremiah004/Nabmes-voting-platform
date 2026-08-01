@@ -13,9 +13,6 @@ function getClientIp(request) {
   return request.headers.get("x-real-ip") || "unknown";
 }
 
-// Checks whether an IP is a known VPN/proxy/hosting address. Fails
-// OPEN on error or timeout — if the lookup itself is unreachable, we
-// don't want that to block every real student's registration.
 async function isProxyIp(ip) {
   if (!ip || ip === "unknown") return false;
   try {
@@ -35,13 +32,6 @@ async function isProxyIp(ip) {
 }
 
 export async function POST(request) {
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid request." }, { status: 400 });
-  }
-export async function POST(request) {
   const { registrationOpen } = await getAppSettings();
   if (!registrationOpen) {
     return NextResponse.json(
@@ -49,6 +39,14 @@ export async function POST(request) {
       { status: 403 }
     );
   }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid request." }, { status: 400 });
+  }
+
   const rawMatric = typeof body.matricNumber === "string" ? body.matricNumber : "";
   const password = typeof body.password === "string" ? body.password : "";
   const confirmPassword =
