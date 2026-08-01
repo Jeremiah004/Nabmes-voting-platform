@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { getSupabaseAdmin } from "../../../lib/supabaseAdmin";
+import { getAppSettings } from "../../../lib/settings";
 
 const MIN_PASSWORD_LENGTH = 8;
 const MAX_REGISTRATIONS_PER_IP_PER_WINDOW = 2;
@@ -40,7 +41,14 @@ export async function POST(request) {
   } catch {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
-
+export async function POST(request) {
+  const { registrationOpen } = await getAppSettings();
+  if (!registrationOpen) {
+    return NextResponse.json(
+      { error: "Registration is closed. Contact the SRC if you believe this is a mistake." },
+      { status: 403 }
+    );
+  }
   const rawMatric = typeof body.matricNumber === "string" ? body.matricNumber : "";
   const password = typeof body.password === "string" ? body.password : "";
   const confirmPassword =
