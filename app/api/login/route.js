@@ -74,3 +74,5 @@ export async function POST(request) {
   });
   return response;
 }
+  return response;
+}
