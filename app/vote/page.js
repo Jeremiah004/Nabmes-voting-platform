@@ -5,15 +5,18 @@ import { useState } from "react";
 export default function VotePage() {
   const [matricNumber, setMatricNumber] = useState("");
   const [password, setPassword] = useState("");
-  const [status, setStatus] = useState("idle");
-  const [message, setMessage] = useState("");
-  const [session, setSession] = useState(null);
+  const [loginStatus, setLoginStatus] = useState("idle");
+  const [loginError, setLoginError] = useState("");
+  const [ballot, setBallot] = useState(null);
+  const [srcChoice, setSrcChoice] = useState(null);
+  const [cecChoices, setCecChoices] = useState({});
+  const [submitStatus, setSubmitStatus] = useState("idle");
+  const [submitMessage, setSubmitMessage] = useState("");
 
-  async function handleSubmit(e) {
+  async function handleLogin(e) {
     e.preventDefault();
-    setStatus("loading");
-    setMessage("");
-
+    setLoginStatus("loading");
+    setLoginError("");
     try {
       const res = await fetch("/api/login", {
         method: "POST",
@@ -21,36 +24,164 @@ export default function VotePage() {
         body: JSON.stringify({ matricNumber, password }),
       });
       const data = await res.json();
-
       if (!res.ok) {
-        setStatus("error");
-        setMessage(data.error || "Login failed.");
+        setLoginStatus("error");
+        setLoginError(data.error || "Login failed.");
         return;
       }
-
-      setSession(data);
-      setStatus("success");
+      await loadBallot();
     } catch {
-      setStatus("error");
-      setMessage("Couldn't reach the server. Check your connection and try again.");
+      setLoginStatus("error");
+      setLoginError("Couldn't reach the server. Check your connection and try again.");
     }
   }
 
-  if (status === "success" && session) {
+  async function loadBallot() {
+    const res = await fetch("/api/ballot");
+    const data = await res.json();
+    if (!res.ok) {
+      setLoginStatus("error");
+      setLoginError(data.error || "Couldn't load the ballot.");
+      return;
+    }
+    setBallot(data);
+    setLoginStatus("success");
+  }
+
+  async function submitVote(election, selections) {
+    const res = await fetch("/api/vote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ election, selections }),
+    });
+    const data = await res.json();
+    return { ok: res.ok, data };
+  }
+
+  async function handleCastVotes() {
+    setSubmitStatus("loading");
+    setSubmitMessage("");
+
+    const results = [];
+
+    if (ballot.src.length > 0 && !ballot.hasVotedSrc) {
+      const position = ballot.src[0].position;
+      if (!srcChoice) {
+        setSubmitStatus("error");
+        setSubmitMessage("Pick a candidate for your SRC representative race.");
+        return;
+      }
+      const r = await submitVote("SRC", { [position]: srcChoice });
+      results.push(r);
+    }
+
+    if (!ballot.hasVotedCec) {
+      const missing = ballot.cec.some((p) => !cecChoices[p.position]);
+      if (missing) {
+        setSubmitStatus("error");
+        setSubmitMessage("Pick a candidate for every CEC position before submitting.");
+        return;
+      }
+      const r = await submitVote("CEC", cecChoices);
+      results.push(r);
+    }
+
+    const failed = results.find((r) => !r.ok);
+    if (failed) {
+      setSubmitStatus("error");
+      setSubmitMessage(failed.data.error || "Couldn't submit your vote.");
+      return;
+    }
+
+    setSubmitStatus("success");
+    await loadBallot();
+  }
+
+  if (loginStatus === "success" && ballot) {
+    if (
+      (ballot.src.length === 0 || ballot.hasVotedSrc) &&
+      (ballot.cec.length === 0 || ballot.hasVotedCec)
+    ) {
+      return (
+        <main className="flex-1 flex items-center justify-center px-6 py-16 text-center">
+          <div className="max-w-md">
+            <p className="font-mono text-xs tracking-widest uppercase text-[var(--accent-ink)] mb-3">
+              Vote Recorded
+            </p>
+            <h1 className="font-display tracking-tight text-3xl text-[var(--ink)] mb-4">
+              Thanks for voting.
+            </h1>
+            <p className="text-[var(--ink-muted)]">
+              Your vote has been recorded. Results will be announced once polls close.
+            </p>
+          </div>
+        </main>
+      );
+    }
+
     return (
-      <main className="flex-1 flex items-center justify-center px-6 py-16">
-        <div className="w-full max-w-md text-center">
+      <main className="flex-1 px-6 py-16">
+        <div className="max-w-md mx-auto">
           <p className="font-mono text-xs tracking-widest uppercase text-[var(--accent-ink)] mb-3">
-            Signed In
+            {ballot.level} Level Ballot
           </p>
-          <h1 className="font-display tracking-tight text-3xl text-[var(--ink)] mb-4">
-            You&rsquo;re in.
+          <h1 className="font-display tracking-tight text-3xl text-[var(--ink)] mb-8">
+            Cast your vote
           </h1>
-          <p className="text-[var(--ink-muted)] leading-relaxed">
-            Ballots aren&rsquo;t open yet — check back once voting starts.
-            SRC: {session.hasVotedSrc ? "already voted" : "not yet voted"}. CEC:{" "}
-            {session.hasVotedCec ? "already voted" : "not yet voted"}.
-          </p>
+
+          {ballot.src.length > 0 && !ballot.hasVotedSrc && (
+            <section className="mb-10">
+              <h2 className="font-display text-xl text-[var(--ink)] mb-1">
+                SRC — {ballot.src[0].position}
+              </h2>
+              <p className="text-sm text-[var(--ink-muted)] mb-4">
+                Top two by vote count represent your level.
+              </p>
+              <div className="space-y-2">
+                {ballot.src[0].candidates.map((c) => (
+                  <CandidateOption
+                    key={c.id}
+                    candidate={c}
+                    selected={srcChoice === c.id}
+                    onSelect={() => setSrcChoice(c.id)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {!ballot.hasVotedCec &&
+            ballot.cec.map((race) => (
+              <section key={race.position} className="mb-10">
+                <h2 className="font-display text-xl text-[var(--ink)] mb-4">
+                  CEC — {race.position}
+                </h2>
+                <div className="space-y-2">
+                  {race.candidates.map((c) => (
+                    <CandidateOption
+                      key={c.id}
+                      candidate={c}
+                      selected={cecChoices[race.position] === c.id}
+                      onSelect={() => setCecChoices((prev) => ({ ...prev, [race.position]: c.id }))}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))}
+
+          {submitStatus === "error" && (
+            <p role="alert" className="text-sm text-[var(--error)] bg-[var(--error-bg)] rounded-lg px-4 py-3 mb-4">
+              {submitMessage}
+            </p>
+          )}
+
+          <button
+            onClick={handleCastVotes}
+            disabled={submitStatus === "loading"}
+            className="w-full rounded-lg bg-[var(--accent-ink)] text-white font-medium py-3 hover:opacity-90 transition disabled:opacity-60"
+          >
+            {submitStatus === "loading" ? "Submitting…" : "Cast my vote"}
+          </button>
         </div>
       </main>
     );
@@ -69,14 +200,13 @@ export default function VotePage() {
           Use the matric number and password you set during registration.
         </p>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleLogin} className="space-y-5">
           <div>
             <label htmlFor="matricNumber" className="block text-sm font-medium text-[var(--ink)] mb-1.5">
               Matric number
             </label>
             <input
               id="matricNumber"
-              name="matricNumber"
               type="text"
               autoComplete="off"
               required
@@ -93,7 +223,6 @@ export default function VotePage() {
             </label>
             <input
               id="password"
-              name="password"
               type="password"
               required
               value={password}
@@ -103,21 +232,40 @@ export default function VotePage() {
             />
           </div>
 
-          {status === "error" && (
+          {loginStatus === "error" && (
             <p role="alert" className="text-sm text-[var(--error)] bg-[var(--error-bg)] rounded-lg px-4 py-3">
-              {message}
+              {loginError}
             </p>
           )}
 
           <button
             type="submit"
-            disabled={status === "loading"}
+            disabled={loginStatus === "loading"}
             className="w-full rounded-lg bg-[var(--accent-ink)] text-white font-medium py-3 hover:opacity-90 transition disabled:opacity-60"
           >
-            {status === "loading" ? "Signing in…" : "Sign in"}
+            {loginStatus === "loading" ? "Signing in…" : "Sign in"}
           </button>
         </form>
       </div>
     </main>
+  );
+}
+
+function CandidateOption({ candidate, selected, onSelect }) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`w-full flex items-center gap-3 rounded-lg border px-4 py-3 text-left transition ${
+        selected ? "border-[var(--accent-ink)] bg-[var(--accent-ink)]/5" : "border-[var(--line)] bg-white hover:border-[var(--accent-ink)]"
+      }`}
+    >
+      {candidate.photo_url ? (
+        <img src={candidate.photo_url} alt="" className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+      ) : (
+        <div className="w-10 h-10 rounded-full bg-[var(--line)] flex-shrink-0" />
+      )}
+      <span className="text-[var(--ink)] font-medium">{candidate.name}</span>
+    </button>
   );
 }
