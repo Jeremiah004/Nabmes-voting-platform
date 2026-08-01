@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function RegisterPage() {
-  // step: "matric" -> "confirm" -> "password" -> success card
-  const [step, setStep] = useState("matric");
+  // step: "loading" -> "closed" | "matric" -> "confirm" -> "password" -> success card
+  const [step, setStep] = useState("loading");
 
   const [matricNumber, setMatricNumber] = useState("");
   const [password, setPassword] = useState("");
@@ -14,8 +14,14 @@ export default function RegisterPage() {
   const [message, setMessage] = useState("");
   const [confirmation, setConfirmation] = useState(null);
 
-  // holds the record we looked up before the student confirms it's them
   const [lookup, setLookup] = useState(null); // { fullName, department, level }
+
+  useEffect(() => {
+    fetch("/api/status")
+      .then((res) => res.json())
+      .then((data) => setStep(data.registrationOpen ? "matric" : "closed"))
+      .catch(() => setStep("matric"));
+  }, []);
 
   async function handleLookup(e) {
     e.preventDefault();
@@ -84,6 +90,28 @@ export default function RegisterPage() {
       setStatus("error");
       setMessage("Couldn't reach the server. Check your connection and try again.");
     }
+  }
+
+  if (step === "loading") {
+    return <main className="flex-1" />;
+  }
+
+  if (step === "closed") {
+    return (
+      <main className="flex-1 flex items-center justify-center px-6 py-16 text-center">
+        <div className="max-w-md">
+          <p className="font-mono text-xs tracking-widest uppercase text-[var(--accent-ink)] mb-3">
+            Registration Closed
+          </p>
+          <h1 className="font-display tracking-tight text-3xl text-[var(--ink)] mb-4">
+            Registration has ended.
+          </h1>
+          <p className="text-[var(--ink-muted)]">
+            Contact your course rep or the SRC if you registered but something looks wrong.
+          </p>
+        </div>
+      </main>
+    );
   }
 
   if (status === "success" && confirmation) {
