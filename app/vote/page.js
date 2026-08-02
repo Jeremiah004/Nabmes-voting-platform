@@ -256,7 +256,7 @@ function CandidateOption({ candidate, selected, onSelect }) {
     <button
       type="button"
       onClick={onSelect}
-      className={`w-full flex items-center gap-3 rounded-lg border px-4 py-3 text-left transition ${
+      className={`w-full flex items-center gap-4 rounded-lg border px-4 py-3 text-left transition ${
         selected ? "border-[var(--accent-ink)] bg-[var(--accent-ink)]/5" : "border-[var(--line)] bg-white hover:border-[var(--accent-ink)]"
       }`}
     >
