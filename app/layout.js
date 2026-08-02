@@ -30,6 +30,16 @@ export default function RootLayout({ children }) {
       className={`${spaceGrotesk.variable} ${inter.variable} ${plexMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-[var(--bg)] text-[var(--ink)]">
+        <header className="flex items-center justify-center gap-2.5 py-4 border-b border-[var(--line)]">
+          <img
+            src="https://zmnpienshbckxdjcahqg.supabase.co/storage/v1/object/public/candidate-photos/Nabmes%20logo.jpeg"
+            alt="NABMES UNILORIN"
+            className="h-9 w-9 rounded-full"
+          />
+          <span className="font-display text-sm tracking-tight text-[var(--ink)]">
+            NABMES · UNILORIN
+          </span>
+        </header>
         {children}
       </body>
     </html>
