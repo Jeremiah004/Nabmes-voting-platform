@@ -261,9 +261,13 @@ function CandidateOption({ candidate, selected, onSelect }) {
       }`}
     >
       {candidate.photo_url ? (
-        <img src={candidate.photo_url} alt="" className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+        <img
+          src={candidate.photo_url}
+          alt=""
+          className="w-16 h-16 rounded-full object-cover object-top flex-shrink-0"
+        />
       ) : (
-        <div className="w-10 h-10 rounded-full bg-[var(--line)] flex-shrink-0" />
+        <div className="w-16 h-16 rounded-full bg-[var(--line)] flex-shrink-0" />
       )}
       <span className="text-[var(--ink)] font-medium">{candidate.name}</span>
     </button>
