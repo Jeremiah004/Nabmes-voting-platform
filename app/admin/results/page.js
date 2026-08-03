@@ -143,26 +143,27 @@ export default function ResultsPage() {
           <p className="font-display text-sm text-[var(--accent-ink)] uppercase tracking-wide mb-3">
             CEC
           </p>
-          <div className="space-y-2 mb-6">
-            {cecRaces.map((race) => {
-              const winner = race.candidates.find((c) => c.isWinner);
-              return (
-                <div
-                  key={race.position}
-                  className="flex items-center justify-between border-b border-[var(--line)] pb-2"
-                >
-                  <span className="text-sm text-[var(--ink-muted)]">{race.position}</span>
-                  <span className="text-sm font-medium text-[var(--ink)] text-right">
-                    {winner ? winner.name : "—"}
-                    {winner && (
-                      <span className="font-mono text-xs text-[var(--ink-muted)] ml-2">
-                        {winner.votes}
-                      </span>
-                    )}
-                  </span>
-                </div>
-              );
-            })}
+          <div className="space-y-4 mb-6">
+            {cecRaces.map((race) => (
+              <div key={race.position}>
+                <p className="text-xs text-[var(--ink-muted)] mb-1">{race.position}</p>
+                {race.candidates.map((c) => (
+                  <div key={c.id} className="flex items-center justify-between">
+                    <span
+                      className={
+                        c.isWinner
+                          ? "text-sm font-medium text-[var(--ink)]"
+                          : "text-sm text-[var(--ink-muted)]"
+                      }
+                    >
+                      {c.name}
+                      {c.isWinner ? " ✓" : ""}
+                    </span>
+                    <span className="font-mono text-xs text-[var(--ink-muted)]">{c.votes}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
           </div>
 
           {srcRaces.length > 0 && (
@@ -170,23 +171,27 @@ export default function ResultsPage() {
               <p className="font-display text-sm text-[var(--accent-ink)] uppercase tracking-wide mb-3">
                 SRC
               </p>
-              <div className="space-y-2">
-                {srcRaces.map((race) => {
-                  const winners = race.candidates.filter((c) => c.isWinner);
-                  return (
-                    <div key={race.position} className="border-b border-[var(--line)] pb-2">
-                      <p className="text-sm text-[var(--ink-muted)] mb-1">{race.position}</p>
-                      {winners.map((w) => (
-                        <div key={w.id} className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-[var(--ink)]">{w.name}</span>
-                          <span className="font-mono text-xs text-[var(--ink-muted)]">
-                            {w.votes}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })}
+              <div className="space-y-4">
+                {srcRaces.map((race) => (
+                  <div key={race.position}>
+                    <p className="text-xs text-[var(--ink-muted)] mb-1">{race.position}</p>
+                    {race.candidates.map((c) => (
+                      <div key={c.id} className="flex items-center justify-between">
+                        <span
+                          className={
+                            c.isWinner
+                              ? "text-sm font-medium text-[var(--ink)]"
+                              : "text-sm text-[var(--ink-muted)]"
+                          }
+                        >
+                          {c.name}
+                          {c.isWinner ? " ✓" : ""}
+                        </span>
+                        <span className="font-mono text-xs text-[var(--ink-muted)]">{c.votes}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
               </div>
             </>
           )}
