@@ -2,12 +2,15 @@
 
 import { useState, useRef } from "react";
 import { toPng } from "html-to-image";
+import { NABMES_LOGO } from "../../../lib/logo";
 
 export default function ResultsPage() {
   const [key, setKey] = useState("");
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
   const [races, setRaces] = useState(null);
+  const [lastFetched, setLastFetched] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const cardRef = useRef(null);
 
@@ -26,10 +29,28 @@ export default function ResultsPage() {
         return;
       }
       setRaces(data.races);
+      setLastFetched(new Date());
       setStatus("success");
     } catch {
       setStatus("error");
       setError("Couldn't reach the server.");
+    }
+  }
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      const res = await fetch(`/api/results?key=${encodeURIComponent(key)}`, {
+        cache: "no-store",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setRaces(data.races);
+        setLastFetched(new Date());
+      }
+    } catch {
+    } finally {
+      setRefreshing(false);
     }
   }
 
@@ -42,10 +63,28 @@ export default function ResultsPage() {
         cacheBust: true,
         backgroundColor: "#f7f7f4",
       });
+
+      if (navigator.canShare) {
+        try {
+          const blob = await (await fetch(dataUrl)).blob();
+          const file = new File([blob], "nabmes-election-results.png", { type: "image/png" });
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: "NABMES Election Results" });
+            return;
+          }
+        } catch (shareErr) {
+          console.error(shareErr);
+        }
+      }
+
       const link = document.createElement("a");
       link.download = "nabmes-election-results.png";
       link.href = dataUrl;
+      document.body.appendChild(link);
       link.click();
+      link.remove();
+
+      window.open(dataUrl, "_blank");
     } catch (err) {
       console.error(err);
       alert("Couldn't generate the image. Try again.");
@@ -102,7 +141,7 @@ export default function ResultsPage() {
   return (
     <main className="flex-1 px-6 py-16">
       <div className="max-w-2xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-2">
           <div>
             <p className="font-mono text-xs tracking-widest uppercase text-[var(--accent-ink)] mb-1">
               Results
@@ -120,17 +159,26 @@ export default function ResultsPage() {
           </button>
         </div>
 
+        <div className="flex items-center justify-between mb-8">
+          <p className="text-xs text-[var(--ink-muted)]">
+            Last refreshed:{" "}
+            {lastFetched ? lastFetched.toLocaleTimeString("en-GB", { hour12: false }) : "—"}
+          </p>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="text-xs font-mono text-[var(--accent-ink)] underline disabled:opacity-60"
+          >
+            {refreshing ? "Refreshing…" : "Refresh now"}
+          </button>
+        </div>
+
         <div
           ref={cardRef}
           className="rounded-2xl border-2 border-[var(--accent-ink)] bg-[var(--bg)] p-8 mb-10"
         >
           <div className="flex items-center gap-2.5 justify-center mb-6">
-            <img
-              src="https://YOUR-PROJECT-REF.supabase.co/storage/v1/object/public/assets/nabmes-logo.png"
-              alt="NABMES"
-              crossOrigin="anonymous"
-              className="h-10 w-10 rounded-full"
-            />
+            <img src={NABMES_LOGO} alt="NABMES" className="h-10 w-10 rounded-full" />
             <div className="text-center">
               <p className="font-display text-base text-[var(--ink)] leading-tight">
                 NABMES UNILORIN
@@ -153,9 +201,7 @@ export default function ResultsPage() {
                   <div key={c.id} className="flex items-center justify-between">
                     <span
                       className={
-                        c.isWinner
-                          ? "text-sm font-medium text-[var(--ink)]"
-                          : "text-sm text-[var(--ink-muted)]"
+                        c.isWinner ? "text-sm font-medium text-[var(--ink)]" : "text-sm text-[var(--ink-muted)]"
                       }
                     >
                       {c.name}
@@ -181,9 +227,7 @@ export default function ResultsPage() {
                       <div key={c.id} className="flex items-center justify-between">
                         <span
                           className={
-                            c.isWinner
-                              ? "text-sm font-medium text-[var(--ink)]"
-                              : "text-sm text-[var(--ink-muted)]"
+                            c.isWinner ? "text-sm font-medium text-[var(--ink)]" : "text-sm text-[var(--ink-muted)]"
                           }
                         >
                           {c.name}
