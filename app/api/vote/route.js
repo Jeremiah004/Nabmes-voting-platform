@@ -69,7 +69,7 @@ export async function POST(request) {
     if (!validIds || !validIds.has(candidateId)) {
       return NextResponse.json({ error: "One of your selections isn't valid. Refresh and try again." }, { status: 400 });
     }
-    rowsToInsert.push({ election, position, candidate_id: candidateId });
+    rowsToInsert.push({ election, position, candidate_id: candidateId, voter_level: voter.level });
   }
 
   const { error: insertError } = await supabase.from("ballots").insert(rowsToInsert);
