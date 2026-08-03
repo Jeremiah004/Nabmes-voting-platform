@@ -16,7 +16,9 @@ export default function ResultsPage() {
     setStatus("loading");
     setError("");
     try {
-      const res = await fetch(`/api/results?key=${encodeURIComponent(key)}`);
+      const res = await fetch(`/api/results?key=${encodeURIComponent(key)}`, {
+        cache: "no-store",
+      });
       const data = await res.json();
       if (!res.ok) {
         setStatus("error");
