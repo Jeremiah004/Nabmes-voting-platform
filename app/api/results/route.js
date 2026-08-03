@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "../../../lib/supabaseAdmin";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const key = searchParams.get("key");
@@ -64,5 +67,8 @@ export async function GET(request) {
     return a.position.localeCompare(b.position);
   });
 
-  return NextResponse.json({ races });
+  return NextResponse.json(
+    { races },
+    { headers: { "Cache-Control": "no-store, max-age=0" } }
+  );
 }
