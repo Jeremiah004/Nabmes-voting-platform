@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function VotePage() {
+  const [pageStatus, setPageStatus] = useState("loading"); // loading | closed | ready
   const [matricNumber, setMatricNumber] = useState("");
   const [password, setPassword] = useState("");
   const [loginStatus, setLoginStatus] = useState("idle");
@@ -12,6 +13,13 @@ export default function VotePage() {
   const [cecChoices, setCecChoices] = useState({});
   const [submitStatus, setSubmitStatus] = useState("idle");
   const [submitMessage, setSubmitMessage] = useState("");
+
+  useEffect(() => {
+    fetch("/api/status")
+      .then((res) => res.json())
+      .then((data) => setPageStatus(data.votingOpen ? "ready" : "closed"))
+      .catch(() => setPageStatus("ready"));
+  }, []);
 
   async function handleLogin(e) {
     e.preventDefault();
@@ -97,6 +105,26 @@ export default function VotePage() {
     await loadBallot();
   }
 
+  if (pageStatus === "loading") {
+    return <main className="flex-1" />;
+  }
+
+  if (pageStatus === "closed") {
+    return (
+      <main className="flex-1 flex items-center justify-center px-6 py-16 text-center">
+        <div className="max-w-md">
+          <p className="font-mono text-xs tracking-widest uppercase text-[var(--accent-ink)] mb-3">
+            Voting
+          </p>
+          <h1 className="font-display tracking-tight text-3xl text-[var(--ink)] mb-4">
+            Voting hasn&rsquo;t opened yet.
+          </h1>
+          <p className="text-[var(--ink-muted)]">Check back once polls are live.</p>
+        </div>
+      </main>
+    );
+  }
+
   if (loginStatus === "success" && ballot) {
     if (
       (ballot.src.length === 0 || ballot.hasVotedSrc) &&
@@ -111,8 +139,20 @@ export default function VotePage() {
             <h1 className="font-display tracking-tight text-3xl text-[var(--ink)] mb-4">
               Thanks for voting.
             </h1>
-            <p className="text-[var(--ink-muted)]">
+            <p className="text-[var(--ink-muted)] mb-8">
               Your vote has been recorded. Results will be announced once polls close.
+            </p>
+            <button
+              onClick={async () => {
+                await fetch("/api/logout", { method: "POST" });
+                window.location.reload();
+              }}
+              className="rounded-lg border border-[var(--line)] text-[var(--ink)] font-medium px-6 py-3 hover:bg-[var(--line)]/20 transition"
+            >
+              Done — sign out
+            </button>
+            <p className="text-xs text-[var(--ink-muted)] mt-4">
+              Sharing this phone with someone else who still needs to vote? Tap this first.
             </p>
           </div>
         </main>
